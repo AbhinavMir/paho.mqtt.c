@@ -968,25 +968,6 @@ exit:
 
 
 /**
- * Free allocated storage for a various packet tyoes
- * @param pack pointer to the suback packet structure
- */
-void MQTTPacket_free_packet(MQTTPacket* pack)
-{
-	FUNC_ENTRY;
-	if (pack->header.bits.type == PUBLISH)
-		MQTTPacket_freePublish((Publish*)pack);
-	/*else if (pack->header.type == SUBSCRIBE)
-		MQTTPacket_freeSubscribe((Subscribe*)pack, 1);
-	else if (pack->header.type == UNSUBSCRIBE)
-		MQTTPacket_freeUnsubscribe((Unsubscribe*)pack);*/
-	else
-		free(pack);
-	FUNC_EXIT;
-}
-
-
-/**
  * Writes an integer as 4 bytes to an output buffer.
  * @param pptr pointer to the output buffer - incremented by the number of bytes used & returned
  * @param anInt the integer to write
