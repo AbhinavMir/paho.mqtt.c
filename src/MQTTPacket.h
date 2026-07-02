@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2024 IBM Corp.
+ * Copyright (c) 2009, 2026 IBM Corp., Ian Craggs
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -257,8 +257,6 @@ void MQTTPacket_freeUnsuback(Unsuback* pack);
 int MQTTPacket_send_pubrec(int MQTTVersion, int msgid, networkHandles* net, const char* clientID);
 int MQTTPacket_send_pubrel(int MQTTVersion, int msgid, int dup, networkHandles* net, const char* clientID);
 int MQTTPacket_send_pubcomp(int MQTTVersion, int msgid, networkHandles* net, const char* clientID);
-
-void MQTTPacket_free_packet(MQTTPacket* pack);
 
 void writeInt4(char** pptr, unsigned int anInt);
 unsigned int readInt4(char** pptr);
