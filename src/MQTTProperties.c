@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, 2024 IBM Corp. and others
+ * Copyright (c) 2017, 2026 IBM Corp. and others
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -248,6 +248,17 @@ int MQTTProperties_write(char** pptr, const MQTTProperties* properties)
   return rc;
 }
 
+/**
+ * Is there enough data remaining to read the supplied number of bytes
+ * @param pptr current read position
+ * @param enddata pointer to the last byte of the buffer
+ * @param len number of bytes to be read
+ * @return 1 if the data can be read, 0 if the buffer is too short
+ */
+static int is_enough_data(char** pptr, char* enddata, int len)
+{
+  return (enddata - (*pptr)) >= len;
+}
 
 int MQTTProperty_read(MQTTProperty* prop, char** pptr, char* enddata)
 {
@@ -255,6 +266,8 @@ int MQTTProperty_read(MQTTProperty* prop, char** pptr, char* enddata)
     len = -1;
 
   memset(prop, 0, sizeof(MQTTProperty));
+  if (!is_enough_data(pptr, enddata, 1))
+    goto exit;
   prop->identifier = readChar(pptr);
   type = MQTTProperty_getType(prop->identifier);
   if (type >= MQTTPROPERTY_TYPE_BYTE && type <= MQTTPROPERTY_TYPE_UTF_8_STRING_PAIR)
@@ -262,19 +275,27 @@ int MQTTProperty_read(MQTTProperty* prop, char** pptr, char* enddata)
     switch (type)
     {
       case MQTTPROPERTY_TYPE_BYTE:
+        if (!is_enough_data(pptr, enddata, 1))
+          goto exit;
         prop->value.byte = readChar(pptr);
         len = 1;
         break;
       case MQTTPROPERTY_TYPE_TWO_BYTE_INTEGER:
+        if (!is_enough_data(pptr, enddata, 2))
+          goto exit;
         prop->value.integer2 = readInt(pptr);
         len = 2;
         break;
       case MQTTPROPERTY_TYPE_FOUR_BYTE_INTEGER:
+        if (!is_enough_data(pptr, enddata, 4))
+          goto exit;
         prop->value.integer4 = readInt4(pptr);
         len = 4;
         break;
       case MQTTPROPERTY_TYPE_VARIABLE_BYTE_INTEGER:
-        len = MQTTPacket_decodeBuf(*pptr, &prop->value.integer4);
+        len = MQTTPacket_decodeBuf(*pptr, enddata, &prop->value.integer4);
+        if (len <= 0)
+          goto exit;
         *pptr += len;
         break;
       case MQTTPROPERTY_TYPE_BINARY_DATA:
@@ -308,14 +329,15 @@ int MQTTProperty_read(MQTTProperty* prop, char** pptr, char* enddata)
         break;
     }
   }
-  return (len == -1) ? -1 : len + 1; /* 1 byte for identifier */
+  exit:
+    return (len == -1) ? -1 : len + 1; /* 1 byte for identifier */
 }
 
 
-int MQTTProperties_read(MQTTProperties* properties, char** pptr, char* enddata)
+int MQTTProperties_read(MQTTProperties *properties, char **pptr, char *enddata)
 {
   int rc = 0;
-  unsigned int remlength = 0;
+  int remlength = 0;
 
   FUNC_ENTRY;
   /* we assume an initialized properties structure */
@@ -323,46 +345,55 @@ int MQTTProperties_read(MQTTProperties* properties, char** pptr, char* enddata)
   {
     int proplen = 0;
 
-    *pptr += MQTTPacket_decodeBuf(*pptr, &remlength);
+    rc = MQTTPacket_decodeBuf(*pptr, enddata, (unsigned int*)&remlength);
+    if (rc > 0)
+      *pptr += rc;
+    else
+    {
+      rc = MQTTPACKET_BUFFER_TOO_SHORT;
+      goto exit;
+    }
     properties->length = remlength;
     while (remlength > 0)
     {
       if (properties->count == properties->max_count)
       {
-    	properties->max_count += 10;
-    	if (properties->max_count == 10)
-    	  properties->array = malloc(sizeof(MQTTProperty) * properties->max_count);
-    	else
-      {
-        void* newPtr = realloc(properties->array, sizeof(MQTTProperty) * properties->max_count);
-        if (newPtr == NULL)
-        {
-          free(properties->array);
-        	properties->array = NULL;
-        }
+        properties->max_count += 10;
+        if (properties->max_count == 10)
+          properties->array = malloc(sizeof(MQTTProperty) * properties->max_count);
         else
         {
-          properties->array = newPtr;
+          void *newPtr = realloc(properties->array, sizeof(MQTTProperty) * properties->max_count);
+          if (newPtr == NULL)
+          {
+            free(properties->array);
+            properties->array = NULL;
+          } else
+          {
+            properties->array = newPtr;
+          }
         }
-      }
       }
       if (properties->array == NULL)
       {
-    	rc = PAHO_MEMORY_ERROR;
+        rc = PAHO_MEMORY_ERROR;
         goto exit;
       }
       if ((proplen = MQTTProperty_read(&properties->array[properties->count], pptr, enddata)) > 0)
-          remlength -= proplen;
+        remlength -= proplen;
       else
-          break;
+      {
+        rc = MQTTPACKET_BAD;
+        break;
+      }
       properties->count++;
     }
     if (remlength == 0)
-        rc = 1; /* data read successfully */
+      rc = 1; /* data read successfully */
   }
 
   if (rc != 1 && properties->array != NULL)
-      MQTTProperties_free(properties);
+    MQTTProperties_free(properties);
 
 exit:
   FUNC_EXIT_RC(rc);
