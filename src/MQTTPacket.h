@@ -263,7 +263,7 @@ unsigned int readInt4(char** pptr);
 void writeMQTTLenString(char** pptr, MQTTLenString lenstring);
 int MQTTLenStringRead(MQTTLenString* lenstring, char** pptr, char* enddata);
 int MQTTPacket_VBIlen(int rem_len);
-int MQTTPacket_decodeBuf(char* buf, unsigned int* value);
+int MQTTPacket_decodeBuf(char* buf, char* enddata, unsigned int* value);
 
 #include "MQTTPacketOut.h"
 

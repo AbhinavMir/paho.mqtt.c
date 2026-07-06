@@ -1059,7 +1059,7 @@ int MQTTPacket_VBIlen(int rem_len)
  * @param value the decoded length returned
  * @return the number of bytes read from the socket
  */
-int MQTTPacket_VBIdecode(int (*getcharfn)(char*, int), unsigned int* value)
+int MQTTPacket_VBIdecode(int (*getcharfn)(char*, char*), char* enddata, unsigned int* value)
 {
 	char c;
 	int multiplier = 1;
@@ -1073,12 +1073,15 @@ int MQTTPacket_VBIdecode(int (*getcharfn)(char*, int), unsigned int* value)
 
 		if (++len > MAX_NO_OF_REMAINING_LENGTH_BYTES)
 		{
-			rc = MQTTPACKET_READ_ERROR;	/* bad data */
+			len = MQTTPACKET_READ_ERROR;	/* bad data */
 			goto exit;
 		}
-		rc = (*getcharfn)(&c, 1);
+		rc = (*getcharfn)(&c, enddata);
 		if (rc != 1)
+		{
+			len = MQTTPACKET_READ_ERROR;	/* bad data */
 			goto exit;
+		}
 		*value += (c & 127) * multiplier;
 		multiplier *= 128;
 	} while ((c & 128) != 0);
@@ -1089,19 +1092,21 @@ exit:
 
 static char* bufptr;
 
-int bufchar(char* c, int count)
+int bufchar(char* c, char* enddata)
 {
-	int i;
+	int rc = 1;
 
-	for (i = 0; i < count; ++i)
+	if (enddata - bufptr > 0)
 		*c = *bufptr++;
-	return count;
+	else
+		rc = -1;
+	return rc; /* 1 is good, any other value is an error */
 }
 
 
-int MQTTPacket_decodeBuf(char* buf, unsigned int* value)
+int MQTTPacket_decodeBuf(char* buf, char* enddata, unsigned int* value)
 {
 	bufptr = buf;
-	return MQTTPacket_VBIdecode(bufchar, value);
+	return MQTTPacket_VBIdecode(bufchar, enddata, value);
 }
 
