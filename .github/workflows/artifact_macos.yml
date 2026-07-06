@@ -1,5 +1,5 @@
-name: "Builds for MacOS"
-on: [push, pull_request] 
+name: "Upload release artifact for MacOS"
+on: [workflow_dispatch]
 
 jobs:
   build:
@@ -19,23 +19,12 @@ jobs:
           echo "pwd $PWD"
           cmake -DPAHO_BUILD_STATIC=FALSE -DPAHO_BUILD_SHARED=TRUE -DCMAKE_BUILD_TYPE=Debug -DPAHO_WITH_SSL=TRUE -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@1.1 -DPAHO_BUILD_DOCUMENTATION=FALSE -DPAHO_BUILD_SAMPLES=TRUE -DPAHO_HIGH_PERFORMANCE=TRUE ..
           cmake --build .
-      - name: Start test broker
-        run: |
-          git clone https://github.com/eclipse/paho.mqtt.testing.git
-          cd paho.mqtt.testing/interoperability
-          python3 startbroker.py -c localhost_testing.conf &
-      - name: Start test proxy
-        run: |
-          python3 test/mqttsas.py &
-      - name: run tests
-        run: |
-          cd build.paho
-          ctest -VV --timeout 600 
-      - name: clean up
-        run: |
-          killall python3 || true
-          sleep 3 # allow broker time to terminate and report
       - name: package
         run: |
           cd build.paho
           cpack --verbose
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Eclipse-Paho-MQTT-C-1.4.0-Darwin.tar.gz
+          path: /Users/runner/work/paho.mqtt.c/paho.mqtt.c/build.paho/Eclipse-Paho-MQTT-C-1.4.0-Darwin.tar.gz
