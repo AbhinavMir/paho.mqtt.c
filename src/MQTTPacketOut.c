@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2024 IBM Corp. and Ian Craggs
+ * Copyright (c) 2009, 2026 IBM Corp. and Ian Craggs
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v2.0
@@ -341,7 +341,7 @@ void* MQTTPacket_suback(int MQTTVersion, unsigned char aHeader, char* data, size
 	}
 	if (pack->qoss->count == 0)
 	{
-		if (pack->properties.array)
+		if (MQTTVersion >= MQTTVERSION_5 && pack->properties.array)
 			free(pack->properties.array);
 		ListFree(pack->qoss);
 		free(pack);
