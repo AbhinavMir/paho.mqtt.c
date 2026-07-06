@@ -9,7 +9,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
       - name: Build LibreSSL
         run: |
           curl -O https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.8.2.tar.gz
